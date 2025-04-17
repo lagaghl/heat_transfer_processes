@@ -1,5 +1,5 @@
-from numpy import pi,exp, log, linspace
-from scipy.integrate import solve_ivp as ode
+from numpy import pi,exp, log, linspace, vstack
+from scipy.integrate import odeint as ode
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
 
@@ -14,7 +14,7 @@ vel2 = 1.5
 rho1 = 997
 rho2 = 850
 
-def odes(L,Ts):
+def odes(Ts,L):
     t = Ts[0]
     T = Ts[1]
     [Cp1,Cp2] = calc_Cp(t,T)
@@ -39,7 +39,6 @@ def calc_U0(t,T,Cps):
     #Recalcular hi y h0:
     [miu_w,miu_W] = calc_Miu(tw,Tw)
     [hi,h0] = Sieder_Tate([Re1,Re2],[Pr1,Pr2],[miu1,miu2],[miu_w,miu_W])
-    print(hi,h0)
     #Calcular U0 a esa t y T:
     U0 = (1/h0 + D0*log(D0/Di)/(2*k) + 1/hi)**-1
     return U0
@@ -102,11 +101,11 @@ def calc_Cp(t,T):
 
     return [Cp1,Cp2]
 
-L = 5
-L_largo = linspace(0,L,1000)
-res = ode(odes,[0,L],[0,100])
-L_largo = res.t
-[t_largo,T_largo] = res.y
+L = 3
+L_largo = linspace(0,L,100)
+res = ode(odes,([0,100]),L_largo)
+t_largo = res[:,0]
+T_largo = res[:,1]
 plt.plot(L_largo,t_largo, label='Fluido frío (t)')
 plt.plot(L_largo,T_largo, label='Fluido caliente (T)')
 plt.xlabel('Longitud del intercambiador (m)')
@@ -114,4 +113,19 @@ plt.ylabel('Temperatura (°C)')
 plt.title('Perfil de temperaturas en el intercambiador')
 plt.grid()
 plt.legend()
+plt.show()
+
+temp_matrix = vstack([T_largo, t_largo, T_largo])
+
+# Crear el mapa de calor
+plt.figure(figsize=(10, 3))
+plt.imshow(temp_matrix, aspect='auto', cmap='jet', extent=[L_largo[0], L_largo[-1], 0, 3])
+
+# Etiquetas del eje Y
+plt.yticks([0.5, 1.5, 2.5], ['Fluido caliente', 'Fluido frío', 'Fluido caliente'])
+
+plt.colorbar(label='Temperatura (°C)')
+plt.xlabel('Longitud del intercambiador (m)')
+plt.title('Distribución de temperaturas en el intercambiador de calor')
+plt.tight_layout()
 plt.show()
