@@ -39,9 +39,9 @@ def calc_U0(t,T,Cps):
     #Recalcular hi y h0:
     [miu_w,miu_W] = calc_Miu(tw,Tw)
     [hi,h0] = Sieder_Tate([Re1,Re2],[Pr1,Pr2],[miu1,miu2],[miu_w,miu_W])
-
+    print(hi,h0)
     #Calcular U0 a esa t y T:
-    U0 = (1/h0 + D0*log(D0/Di)/(2*k) + 1/hi)
+    U0 = (1/h0 + D0*log(D0/Di)/(2*k) + 1/hi)**-1
     return U0
 
 def Sieder_Tate(Re,Pr,Miu,Miuw):
@@ -76,11 +76,11 @@ def calc_Miu(t,T):
 
     a1 = -6.944
     b1 =  2036.8
-    miu1 = exp(a1+b1/t)*1000
+    miu1 = exp(a1+b1/t)*1e-3
 
     a2 = -6.944
     b2 =  2036.8
-    miu2 = exp(a2+b2/T)*1000
+    miu2 = exp(a2+b2/T)*1e-3
 
     return [miu1, miu2]
 
@@ -102,7 +102,7 @@ def calc_Cp(t,T):
 
     return [Cp1,Cp2]
 
-L = 10
+L = 5
 L_largo = linspace(0,L,1000)
 res = ode(odes,[0,L],[0,100])
 L_largo = res.t
