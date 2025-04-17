@@ -1,41 +1,42 @@
-from numpy import pi, exp, log
+from numpy import pi,exp, log, linspace
 from scipy.integrate import solve_ivp as ode
 from scipy.optimize import fsolve
+import matplotlib.pyplot as plt
 
 global D0; global Di; global k; global kf1; global kf2; global vel1; global vel2; global rho1; global rho2
-D0 = 1.1
-Di = 0.8
-k  = 1200
-kf1 = 100
-kf2 = 100
-vel1 = 100
-vel2 = 100
-rho1 = 1000
-rho2 = 1000
+D0 = 0.06
+Di = 0.04
+k  = 15
+kf1 = 0.6
+kf2 = 0.12
+vel1 = 0.8
+vel2 = 1.5
+rho1 = 997
+rho2 = 850
 
-def odes(L,Ts,D0,w1,w2):
+def odes(L,Ts):
     t = Ts[0]
     T = Ts[1]
     [Cp1,Cp2] = calc_Cp(t,T)
     U0 = calc_U0(t,T,[Cp1,Cp2])
     
-
-    dt_dL =  (U0*pi()*D0*(T-t))/(w1*Cp1)
-    dT_dL = -(U0*pi()*D0*(T-t))/(w2*Cp2)
-
+    w1 = vel1*rho1*pi/4*Di**2
+    w2 = vel2*rho2*pi/4*D0**2
+    dt_dL =  (U0*pi*D0*(T-t))/(w1*Cp1)
+    dT_dL = -(U0*pi*D0*(T-t))/(w2*Cp2)
     return [dt_dL,dT_dL]
 
 def calc_U0(t,T,Cps):
     [Cp1,Cp2] = calc_Cp(t,T)
+    [miu1,miu2] = calc_Miu(t,T)
     Re1 = rho1 * vel1 * Di/miu1
     Re2 = rho2 * vel2 * D0/miu2
     Pr1 = miu1 * Cp1 / kf1
     Pr2 = miu2 * Cp2 / kf2
 
-    [tw,Tw] = fsolve(calc_h,[t,T],[Re1,Re2],[Pr1,Pr2])
+    [tw,Tw] = fsolve(calc_h,[t,T], args=(t,T,[Re1,Re2],[Pr1,Pr2]))
 
     #Recalcular hi y h0:
-    [miu1,miu2] = calc_Miu(t,T)
     [miu_w,miu_W] = calc_Miu(tw,Tw)
     [hi,h0] = Sieder_Tate([Re1,Re2],[Pr1,Pr2],[miu1,miu2],[miu_w,miu_W])
 
@@ -75,11 +76,11 @@ def calc_Miu(t,T):
 
     a1 = -6.944
     b1 =  2036.8
-    miu1 = exp(a1+b1/t)
+    miu1 = exp(a1+b1/t)*1000
 
     a2 = -6.944
     b2 =  2036.8
-    miu2 = exp(a2+b2/T)
+    miu2 = exp(a2+b2/T)*1000
 
     return [miu1, miu2]
 
@@ -100,3 +101,17 @@ def calc_Cp(t,T):
     Cp2 = A2 + B2*T + C2*T**2 + D2*T**3
 
     return [Cp1,Cp2]
+
+L = 10
+L_largo = linspace(0,L,1000)
+res = ode(odes,[0,L],[0,100])
+L_largo = res.t
+[t_largo,T_largo] = res.y
+plt.plot(L_largo,t_largo, label='Fluido frío (t)')
+plt.plot(L_largo,T_largo, label='Fluido caliente (T)')
+plt.xlabel('Longitud del intercambiador (m)')
+plt.ylabel('Temperatura (°C)')
+plt.title('Perfil de temperaturas en el intercambiador')
+plt.grid()
+plt.legend()
+plt.show()
