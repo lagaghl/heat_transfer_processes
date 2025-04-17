@@ -26,29 +26,55 @@ def calc_U0(t,T,Cps):
     rho2 = 1000
     Cp1 = 27.5
     Cp2 = 27.5
-    # Calcular el aproximado de h0 y hi suponiendo mius iguales
-    [miu1,miu2] = calc_Miu(t,T)
     Re1 = rho1 * vel1 * Di/miu1
     Re2 = rho2 * vel2 * D0/miu2
     Pr1 = miu1 * Cp1 / kf1
     Pr2 = miu2 * Cp2 / kf2
-    
-    [hi,h0] = calc_h([Re1,Re2],[Pr1,Pr2],[miu1,miu2],[miu_w,miu_W])
-    # Buscar un Tw y tw que haga que se cumplan las ecuaciones siguientes ¿? 
-    Tw = (((h0*D0)/(hi*Di))*(1+hi*Di*log(D0/Di)/(2*k))*T + t)/(1 +(h0*D0/(hi*Di))+(hi*Di*log(D0/Di)/(2*k)))
-    tw = t + (h0*D0/(hi*Di))*(T-Tw)
-    [miu_w,miu_W] = calc_Miu(tw,Tw)
 
+    [tw,Tw] = fsolve(calc_h,[t,T],[Re1,Re2],[Pr1,Pr2])
+    
     #Recalcular hi y h0:
-    [hi,h0] = calc_h([Re1,Re2],[Pr1,Pr2],[miu1,miu2],[miu_w,miu_W])
+    [miu1,miu2] = calc_Miu(t,T)
+    [miu_w,miu_W] = calc_Miu(tw,Tw)
+    [hi,h0] = Sieder_Tate([Re1,Re2],[Pr1,Pr2],[miu1,miu2],[miu_w,miu_W])
 
     #Calcular U0 a esa t y T:
     U0 = (1/h0 + D0*log(D0/Di)/(2*k) + 1/hi)
-
     return U0
 
-def calc_h(Re,Pr,Miu,Miuw):
+def Sieder_Tate(Re,Pr,Miu,Miuw):
+    [Re1,Re2] = Re
+    [Pr1,Pr2] = Pr
     pass
+
+def calc_h (Tws,t,T,Re,Pr):
+    #Datos:
+    D0 = 1.1
+    Di = 0.8
+    k  = 1200
+    kf1 = 100
+    kf2 = 100
+    vel1 = 100
+    vel2 = 100
+    rho1 = 1000
+    rho2 = 1000
+    Cp1 = 27.5
+    Cp2 = 27.5
+    #Calculos:
+    [Re1,Re2] = Re
+    [Pr1,Pr2] = Pr
+
+    [tw,Tw] = Tws
+    [miu1,miu2] = calc_Miu(t,T)
+    [miu_w,miu_W] = calc_Miu(tw,Tw)
+
+    [hi,h0] = Sieder_Tate([Re1,Re2],[Pr1,Pr2],[miu1,miu2],[miu_w,miu_W])
+
+    # Buscar un Tw y tw que haga que se cumplan las ecuaciones siguientes ¿? 
+    f1 = tw - (t + (h0*D0/(hi*Di))*(T-Tw))
+    f2 = Tw - (((h0*D0)/(hi*Di))*(1+hi*Di*log(D0/Di)/(2*k))*T + t)/(1 +(h0*D0/(hi*Di))+(hi*Di*log(D0/Di)/(2*k)))
+
+    return [f2,f1]
 
 def calc_Miu(t,T):
     t += 273.15
