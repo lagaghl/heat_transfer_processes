@@ -2,6 +2,17 @@ from numpy import pi, exp, log
 from scipy.integrate import solve_ivp as ode
 from scipy.optimize import fsolve
 
+global D0; global Di; global k; global kf1; global kf2; global vel1; global vel2; global rho1; global rho2
+D0 = 1.1
+Di = 0.8
+k  = 1200
+kf1 = 100
+kf2 = 100
+vel1 = 100
+vel2 = 100
+rho1 = 1000
+rho2 = 1000
+
 def odes(L,Ts,D0,w1,w2):
     t = Ts[0]
     T = Ts[1]
@@ -15,24 +26,14 @@ def odes(L,Ts,D0,w1,w2):
     return [dt_dL,dT_dL]
 
 def calc_U0(t,T,Cps):
-    D0 = 1.1
-    Di = 0.8
-    k  = 1200
-    kf1 = 100
-    kf2 = 100
-    vel1 = 100
-    vel2 = 100
-    rho1 = 1000
-    rho2 = 1000
-    Cp1 = 27.5
-    Cp2 = 27.5
+    [Cp1,Cp2] = calc_Cp(t,T)
     Re1 = rho1 * vel1 * Di/miu1
     Re2 = rho2 * vel2 * D0/miu2
     Pr1 = miu1 * Cp1 / kf1
     Pr2 = miu2 * Cp2 / kf2
 
     [tw,Tw] = fsolve(calc_h,[t,T],[Re1,Re2],[Pr1,Pr2])
-    
+
     #Recalcular hi y h0:
     [miu1,miu2] = calc_Miu(t,T)
     [miu_w,miu_W] = calc_Miu(tw,Tw)
@@ -45,21 +46,13 @@ def calc_U0(t,T,Cps):
 def Sieder_Tate(Re,Pr,Miu,Miuw):
     [Re1,Re2] = Re
     [Pr1,Pr2] = Pr
-    pass
+    [Miu1,Miu2] = Miu
+    [miu_w,miu_W] = Miuw
+    h1 = kf1/Di * (0.027* Re1**(4/5) * Pr1**(1/3) * (Miu1/miu_w)**0.14)
+    h2 = kf2/D0 * (0.027* Re2**(4/5) * Pr2**(1/3) * (Miu2/miu_W)**0.14)
+    return[h1,h2]
 
 def calc_h (Tws,t,T,Re,Pr):
-    #Datos:
-    D0 = 1.1
-    Di = 0.8
-    k  = 1200
-    kf1 = 100
-    kf2 = 100
-    vel1 = 100
-    vel2 = 100
-    rho1 = 1000
-    rho2 = 1000
-    Cp1 = 27.5
-    Cp2 = 27.5
     #Calculos:
     [Re1,Re2] = Re
     [Pr1,Pr2] = Pr
