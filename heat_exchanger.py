@@ -102,7 +102,7 @@ def calc_Cp(t,T):
     return [Cp1,Cp2]
 
 L = 3
-L_largo = linspace(0,L,100)
+L_largo = linspace(0,L,500)
 res = ode(odes,([0,100]),L_largo)
 t_largo = res[:,0]
 T_largo = res[:,1]
