@@ -4,7 +4,7 @@ assumptions:
 -Density is constant throughout the exchanger for all streams.
 -The current of the inner tube is the cold one
 """
-from numpy import linspace, log
+from numpy import log, pi
 
 class Stream:
     def __init__(self, Q, rho, M, T0, Viscosity, Cp, Kf):
@@ -51,6 +51,8 @@ Do = 2.37/12 #ft
 Di = (2.37 - 2*0.154)/12 #ft
 Ds = 3.50/12 #ft
 Deq = (Ds**2 - Do**2)/Do #Ft
+Area = pi/4 * (Do**2 - Ds**2)
+area = pi/4 * Di**2
 
 def calc_kw (T,parameters_pipe = [228.2103,0.057999,-0.000086806]):
     """calculates the thermal conductivity (Kw) in BTU/(Lb-°F) given a temperature in °F"""
@@ -59,7 +61,7 @@ def calc_kw (T,parameters_pipe = [228.2103,0.057999,-0.000086806]):
     Kw = (A + B*T + C*T**2)*0.577789316545299 #BTU/(ft-°F)
     return Kw
 
-def calc_Uo(Ts, streams, Diameters, Areas):
+def calc_Uo(Ts, streams, Diameters = [Deq,Di], Areas=[Area,area]):
     [T,t] = Ts
     [Area,area] = Areas
     [Deq,Di] = Diameters
