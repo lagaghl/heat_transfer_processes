@@ -4,7 +4,7 @@ assumptions:
 -Density is constant throughout the exchanger for all streams.
 -The current of the inner tube is the cold one
 """
-from numpy import log, pi, linspace, zeros, vstack, column_stack
+from numpy import log, pi, linspace, zeros, vstack, column_stack, repeat, newaxis
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
@@ -65,12 +65,34 @@ def calc_kw (T,parameters_pipe = parameters_pipe):
     Kw = (A + B*T + C*T**2)*0.577789316545299 #BTU/(ft-°F)
     return Kw
 
-def calc_Uo(Ts, streams, Diameters = [Deq,Di], Areas=[Area,area]):
+def calc_Uo(Ts, streams):
     [T,t] = Ts
-    [Area,area] = Areas
-    [Deq,Di] = Diameters
     [hot,cold] = streams
     
+    #hot stream:
+    Vel = hot.Q/Area
+    Miu = hot.miu(T)
+    Re = Vel*Deq*hot.rho/Miu
+    #cold stream:
+    vel = cold.Q/area
+    miu = cold.miu(t)
+    re = vel*Di*cold.rho/miu
+
+    #Start with the assumption Tw = T and tw = t
+    [Tw,tw] = calc_Tw(T,t,hot,cold)
+    Tw_prom = (Tw-tw)/2
+
+    Miu_W = hot.miu(Tw)
+    miu_w = cold.miu(tw)
+
+    Nu = 0.027*(Re**0.8)*(hot.Pr(T)**(1/3))*(Miu/Miu_W)**0.14
+    nu = 0.027*(re**0.8)*(cold.Pr(T)**(1/3))*(miu/miu_w)**0.14
+    ho = hot.kf(T)*Nu/Deq
+    hio = (cold.kf(T)*nu/Di)*(Di/Do)
+    Uo = 1/(1/hio + Do * log(Do/Di)/(2*calc_kw(Tw_prom)) + 1/ho)
+    return Uo
+
+def calc_Tw(T,t,hot,cold):
     #hot stream:
     Vel = hot.Q/Area
     Miu = hot.miu(T)
@@ -85,7 +107,6 @@ def calc_Uo(Ts, streams, Diameters = [Deq,Di], Areas=[Area,area]):
     tw = t
     tol = 1e-6
     Error = 1
-    #creo que acá va el while:
     maxitr = 500
     i = 0
     while Error>tol:
@@ -107,9 +128,9 @@ def calc_Uo(Ts, streams, Diameters = [Deq,Di], Areas=[Area,area]):
         Tw = Tw_n
         tw = tw_n
         if i == maxitr:
-            print("Warning: Iterative process did not converge. Returning fallback Uo.")
-            return 1.0  # Fallback value for Uo
-    return Uo
+            print("Warning: Iterative process did not converge. Returning fallback for Tw and tw.")
+            return [Tw,tw]
+    return [Tw,tw]
 
 def edos(L,Ts,hot,cold):
     [T,t] = Ts
@@ -122,41 +143,62 @@ def edos(L,Ts,hot,cold):
     return[dT_dL, dt_dL]
 
 L = 10
-n = 10000
-L_largo = linspace(0,L,n)
-T1_largo = zeros(n)
-T2_largo = zeros(n)
-t1_largo = zeros(n)
-t2_largo = zeros(n)
+n = 100
+L_long = linspace(0,L,n)
+T1_long = zeros(n)
+T2_long = zeros(n)
+t1_long = zeros(n)
+t2_long = zeros(n)
 
 def fobj (Tf, hot, cold):
     Tf = Tf[0]
-    solution = solve_ivp(edos, [0, L], [Tf, cold.T0], t_eval=L_largo, args=(hot, cold))
-    T1_largo = solution.y[0]
-    return T1_largo[-1] - hot.T0
+    solution = solve_ivp(edos, [0, L], [Tf, cold.T0], t_eval=L_long, args=(hot, cold))
+    T1_long = solution.y[0]
+    return T1_long[-1] - hot.T0
 
 #search for Tf_1:
-Tf_1 = 100 #°F
+Tf_1 = 155 #°F
 hot1.Tf = fsolve(fobj, (Tf_1), args=(hot1,cold), xtol=1e-6)[0]
  
-solution = solve_ivp(edos, [0, L], [hot1.Tf, cold.T0], t_eval=L_largo, args=(hot1, cold))
-T1_largo = solution.y[0]
-t1_largo = solution.y[1]
-cold.Tf1 = t1_largo[-1]
+solution = solve_ivp(edos, [0, L], [hot1.Tf, cold.T0], t_eval=L_long, args=(hot1, cold))
+T1_long = solution.y[0]
+t1_long = solution.y[1]
+cold.Tf1 = t1_long[-1]
+
+Tw_1 = zeros(n)
+tw_1 = zeros(n)
+
+for i in range(n):
+    T = T1_long[i]
+    t = t1_long[i]
+    Tw, tw = calc_Tw(T, t, hot1, cold)
+    Tw_1[i] = Tw
+    tw_1[i] = tw
+
 
 #search for Tf_2:
 Tf_2 = 150 #°F
 hot2.Tf = fsolve(fobj, (Tf_2), args=(hot2,cold), xtol=1e-6)[0]
  
-solution = solve_ivp(edos, [0, L], [hot2.Tf, cold.Tf1], t_eval=L_largo, args=(hot2, cold))
-T2_largo = solution.y[0]
-t2_largo = solution.y[1]
-cold.Tf2 = t2_largo[-1]
+solution = solve_ivp(edos, [0, L], [hot2.Tf, cold.Tf1], t_eval=L_long, args=(hot2, cold))
+T2_long = solution.y[0]
+t2_long = solution.y[1]
+cold.Tf2 = t2_long[-1]
 
-plt.plot(L_largo,t1_largo, label='cold current 1')
-plt.plot(L_largo,T1_largo, label='hot current 1')
-plt.plot(L_largo+10,t2_largo, label='cold current 2')
-plt.plot(L_largo+10,T2_largo, label='hot current 2')
+Tw_2 = zeros(n)
+tw_2 = zeros(n)
+
+for i in range(n):
+    T = T2_long[i]
+    t = t2_long[i]
+    Tw, tw = calc_Tw(T, t, hot2, cold)
+    Tw_2[i] = Tw
+    tw_2[i] = tw
+
+plt.plot(L_long,t1_long, label='cold current 1')
+plt.plot(L_long,T1_long, label='hot current 1')
+plt.plot(L_long+10,t2_long, label='cold current 2')
+plt.plot(L_long+10,T2_long, label='hot current 2')
 plt.xlabel('exchanger length (ft)')
 plt.ylabel('temperature (°F)')
 plt.title('temperature profile in the exchanger')
@@ -164,20 +206,19 @@ plt.grid()
 plt.legend()
 plt.show()
 
-T_largo = column_stack([T1_largo, T2_largo])
-t_largo = column_stack([t1_largo, t2_largo])
-temp_matrix = vstack([T_largo, t_largo, T_largo])
+T_long = column_stack([T1_long, T2_long])
+t_long = column_stack([t1_long, t2_long])
 
-# Crear el mapa de calor
+temp_matrix = vstack([T_long,t_long,T_long])
+
 plt.figure(figsize=(10, 3))
-plt.imshow(temp_matrix, aspect='auto', cmap='jet', extent=[L_largo[0], L_largo[-1]+L, 0, 3])
+plt.imshow(temp_matrix, aspect='auto', cmap='jet', extent=[L_long[0], L_long[-1]+L, 0, 3])
 
-# Etiquetas del eje Y
 plt.yticks([0.5, 1.5, 2.5], ['Fluido caliente', 'Fluido frío', 'Fluido caliente'])
 
-plt.colorbar(label='Temperatura (°F)')
-plt.xlabel('Longitud del intercambiador (ft)')
-plt.title('Distribución de temperaturas en el intercambiador de calor')
+plt.colorbar(label='Temperature (°F)')
+plt.xlabel('Exchanger length (ft)')
+plt.title('Temperature profile in the exchanger')
 plt.tight_layout()
 plt.show()
 
