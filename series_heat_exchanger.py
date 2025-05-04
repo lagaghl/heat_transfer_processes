@@ -4,8 +4,8 @@ assumptions:
 -Density is constant throughout the exchanger for all streams.
 -The current of the inner tube is the cold one
 """
-from numpy import log, pi, linspace, zeros
-from scipy.integrate import solve_ivp, ode
+from numpy import log, pi, linspace, zeros, vstack
+from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
 
@@ -55,7 +55,7 @@ Do = 2.37/12 #ft
 Di = (2.37 - 2*0.154)/12 #ft
 Ds = 3.50/12 #ft
 Deq = (Ds**2 - Do**2)/Do #Ft
-Area = pi/4 * (Do**2 - Ds**2)
+Area = pi/4 * (Ds**2 - Do**2)
 area = pi/4 * Di**2
 
 def calc_kw (T,parameters_pipe = parameters_pipe):
@@ -107,34 +107,37 @@ def calc_Uo(Ts, streams, Diameters = [Deq,Di], Areas=[Area,area]):
         Tw = Tw_n
         tw = tw_n
         if i == maxitr:
-            print(f"Warning: Iterative process did not converge. Returning fallback Uo.")
+            print("Warning: Iterative process did not converge. Returning fallback Uo.")
             return 1.0  # Fallback value for Uo
     return Uo
 
 def edos(L,Ts,hot,cold):
-    global i
-    print(f'iteracion: {i}')
-    i += 1
     [T,t] = Ts
     streams=[hot,cold]
 
     Uo = calc_Uo(Ts, streams)
     dt_dL = Uo*pi*Do*(T-t)/(cold.W * cold.cp(t))
     dT_dL = Uo*pi*Do*(T-t)/( hot.W *  hot.cp(T))
-    print(f'cp_cold: {cold.cp(t)} & cp_hot: {hot.cp(T)}')
-    print(f't: {t} & T: {T}')
 
     return[dT_dL, dt_dL]
 
 L = 10
-n = 100
+n = 10000
 L_largo = linspace(0,L,n)
 T1_largo = zeros(n)
 t_largo = zeros(n)
-Tf_1 = 80
-i=0
+Tf_1 = 100
 
-solution = solve_ivp(edos, [0, L], [Tf_1, cold.T0], method='BDF', t_eval=L_largo, args=(hot1, cold))
+def fobj (Tf_1, hot, cold):
+    Tf_1 = Tf_1[0]
+    solution = solve_ivp(edos, [0, L], [Tf_1, cold.T0], t_eval=L_largo, args=(hot, cold))
+    T1_largo = solution.y[0]
+    return T1_largo[-1] - hot.T0
+
+Tf_1 = fsolve(fobj, (Tf_1), args=(hot1,cold), xtol=1e-6)[0]
+print(f'Tf_1: {Tf_1}')
+ 
+solution = solve_ivp(edos, [0, L], [Tf_1, cold.T0], t_eval=L_largo, args=(hot1, cold))
 T1_largo = solution.y[0]
 t_largo = solution.y[1]
 
@@ -148,7 +151,20 @@ plt.legend()
 plt.show()
 
 
+temp_matrix = vstack([T1_largo, t_largo, T1_largo])
 
+# Crear el mapa de calor
+plt.figure(figsize=(10, 3))
+plt.imshow(temp_matrix, aspect='auto', cmap='jet', extent=[L_largo[0], L_largo[-1], 0, 3])
+
+# Etiquetas del eje Y
+plt.yticks([0.5, 1.5, 2.5], ['Fluido caliente', 'Fluido frío', 'Fluido caliente'])
+
+plt.colorbar(label='Temperatura (°F)')
+plt.xlabel('Longitud del intercambiador (ft)')
+plt.title('Distribución de temperaturas en el intercambiador de calor')
+plt.tight_layout()
+plt.show()
 
 
     
