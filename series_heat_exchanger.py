@@ -48,8 +48,8 @@ parameters_pipe      =  [228.2103,0.057999,-0.000086806]
 #              Q,   rho,        M,  T0, Viscosity,            Cp,            Kf
 #Nom = class ( Q,   Rho,       MW,  T0, viscosity_parameters, Cp_parameters, Kf_parameters)
 cold = Stream(40, 8.337, 18.01528,  80, viscosity_parameters, Cp_parameters, Kf_parameters)
-hot1 = Stream(30, 8.337, 18.01528, 120, viscosity_parameters, Cp_parameters, Kf_parameters)
-hot2 = Stream(30, 8.337, 18.01528, 200, viscosity_parameters, Cp_parameters, Kf_parameters)
+hot1 = Stream(30, 8.337, 18.01528, 200, viscosity_parameters, Cp_parameters, Kf_parameters)
+hot2 = Stream(30, 8.337, 18.01528, 120, viscosity_parameters, Cp_parameters, Kf_parameters)
 
 Do = 2.37/12 #ft
 Di = (2.37 - 2*0.154)/12 #ft
@@ -66,7 +66,7 @@ def calc_kw (T,parameters_pipe = parameters_pipe):
     return Kw
 
 def calc_Uo(Ts, streams):
-    [T,t] = Ts
+    [T,t,Q] = Ts
     [hot,cold] = streams
     
     #hot stream:
@@ -133,14 +133,15 @@ def calc_Tw(T,t,hot,cold):
     return [Tw,tw]
 
 def edos(L,Ts,hot,cold):
-    [T,t] = Ts
+    [T,t,Q] = Ts
     streams=[hot,cold]
 
     Uo = calc_Uo(Ts, streams)
     dt_dL = Uo*pi*Do*(T-t)/(cold.W * cold.cp(t))
     dT_dL = Uo*pi*Do*(T-t)/( hot.W *  hot.cp(T))
+    dQ_dL = Uo*pi*Do*(T-t)/3600 #BTU/Hr
 
-    return[dT_dL, dt_dL]
+    return[dT_dL, dt_dL, dQ_dL]
 
 L = 10
 n = 100
@@ -152,17 +153,23 @@ t2_long = zeros(n)
 
 def fobj (Tf, hot, cold):
     Tf = Tf[0]
-    solution = solve_ivp(edos, [0, L], [Tf, cold.T0], t_eval=L_long, args=(hot, cold))
-    T1_long = solution.y[0]
-    return T1_long[-1] - hot.T0
+    if hasattr(cold, 'Tf1'):
+        T0 = cold.Tf1
+    else:
+        T0 = cold.T0
+
+    solution = solve_ivp(edos, [0, L], [Tf, T0, 0], t_eval=L_long, args=(hot, cold))
+    T_long = solution.y[0]
+    return T_long[-1] - hot.T0
 
 #search for Tf_1:
-Tf_1 = 155 #°F
+Tf_1 = 150 #°F
 hot1.Tf = fsolve(fobj, (Tf_1), args=(hot1,cold), xtol=1e-6)[0]
  
-solution = solve_ivp(edos, [0, L], [hot1.Tf, cold.T0], t_eval=L_long, args=(hot1, cold))
+solution = solve_ivp(edos, [0, L], [hot1.Tf, cold.T0,0], t_eval=L_long, args=(hot1, cold))
 T1_long = solution.y[0]
 t1_long = solution.y[1]
+Q1_long = solution.y[2]
 cold.Tf1 = t1_long[-1]
 
 Tw_1 = zeros(n)
@@ -178,11 +185,12 @@ for i in range(n):
 
 #search for Tf_2:
 Tf_2 = 150 #°F
-hot2.Tf = fsolve(fobj, (Tf_2), args=(hot2,cold), xtol=1e-6)[0]
+hot2.Tf = fsolve(fobj, (Tf_2), args=(hot2,cold), xtol=1e-8)[0]
  
-solution = solve_ivp(edos, [0, L], [hot2.Tf, cold.Tf1], t_eval=L_long, args=(hot2, cold))
+solution = solve_ivp(edos, [0, L], [hot2.Tf, cold.Tf1,Q1_long[-1]], t_eval=L_long, args=(hot2, cold))
 T2_long = solution.y[0]
 t2_long = solution.y[1]
+Q2_long = solution.y[2]
 cold.Tf2 = t2_long[-1]
 
 Tw_2 = zeros(n)
@@ -209,6 +217,16 @@ plt.show()
 T_long = column_stack([T1_long, T2_long])
 t_long = column_stack([t1_long, t2_long])
 
+plt.plot(L_long,Q1_long, label='heat 1')
+plt.plot(L_long+L,Q2_long, label='heat 2')
+plt.xlabel('exchanger length (ft)')
+plt.ylabel('Q (BTU/Hr)')
+plt.title('heat transfer in the exchanger')
+plt.grid()
+plt.legend()
+plt.show()
+
+
 temp_matrix = vstack([T_long,t_long,T_long])
 
 plt.figure(figsize=(10, 3))
@@ -222,7 +240,8 @@ plt.title('Temperature profile in the exchanger')
 plt.tight_layout()
 plt.show()
 
-
+print(f'Q  = {Q2_long[-1] } BTU/hr')
+print(f'tf = {t2_long[-1]} °F')
     
 
 
