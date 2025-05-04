@@ -4,16 +4,20 @@ assumptions:
 -Density is constant throughout the exchanger for all streams.
 -The current of the inner tube is the cold one
 """
-from numpy import log, pi
+from numpy import log, pi, linspace, zeros
+from scipy.integrate import solve_ivp, ode
+from scipy.optimize import fsolve
+import matplotlib.pyplot as plt
 
 class Stream:
     def __init__(self, Q, rho, M, T0, Viscosity, Cp, Kf):
+        self.Q = Q*0.1336806/60 #ft3/s
         self.W = Q*rho/60 #Lb/s
         self.T0 = T0
         self.Viscosity = Viscosity
         self.Cp = Cp
         self.Kf = Kf
-        self.rho = rho*7.480519350799
+        self.rho = rho*7.480519350799 #Lb/ft3
         self.M = M #molecular weight (international units)
     def miu(self,T):
         """calculates the dynamic viscosity in lb/(ft-s) given a temperature in °F"""
@@ -38,11 +42,11 @@ class Stream:
         return self.cp(T)*self.miu(T)/self.kf(T)
 
 viscosity_parameters =  [-10.2158,1792.5,0.01773,-0.000012631]
-Cp_parameters        =  [92.053,-0.039953,-0.00021103,5,3469E-07]
+Cp_parameters        =  [92.053,-0.039953,-0.00021103,5.3469E-07]
 Kf_parameters        =  [-0.2758,0.004612,-5.5391E-06]
 parameters_pipe      =  [228.2103,0.057999,-0.000086806]
-
-#Nom = class ( W,   Rho,       MW,  T0, viscosity_parameters, Cp_parameters, Kf_parameters)
+#              Q,   rho,        M,  T0, Viscosity,            Cp,            Kf
+#Nom = class ( Q,   Rho,       MW,  T0, viscosity_parameters, Cp_parameters, Kf_parameters)
 cold = Stream(40, 8.337, 18.01528,  80, viscosity_parameters, Cp_parameters, Kf_parameters)
 hot1 = Stream(30, 8.337, 18.01528, 120, viscosity_parameters, Cp_parameters, Kf_parameters)
 hot2 = Stream(30, 8.337, 18.01528, 200, viscosity_parameters, Cp_parameters, Kf_parameters)
@@ -54,7 +58,7 @@ Deq = (Ds**2 - Do**2)/Do #Ft
 Area = pi/4 * (Do**2 - Ds**2)
 area = pi/4 * Di**2
 
-def calc_kw (T,parameters_pipe = [228.2103,0.057999,-0.000086806]):
+def calc_kw (T,parameters_pipe = parameters_pipe):
     """calculates the thermal conductivity (Kw) in BTU/(Lb-°F) given a temperature in °F"""
     T = ((T-32)*5/9) + 273.15 #This pass the T from °F to K
     [A,B,C] = parameters_pipe
@@ -65,7 +69,7 @@ def calc_Uo(Ts, streams, Diameters = [Deq,Di], Areas=[Area,area]):
     [T,t] = Ts
     [Area,area] = Areas
     [Deq,Di] = Diameters
-    [cold,hot] = streams
+    [hot,cold] = streams
     
     #hot stream:
     Vel = hot.Q/Area
@@ -99,16 +103,52 @@ def calc_Uo(Ts, streams, Diameters = [Deq,Di], Areas=[Area,area]):
 
         Tw_n = T - 1/ho * Uo * (T-t)
         tw_n = t + 1/hio * Uo * (T-t)
-        Error = max([abs((Tw-Tw_n)/Tw_n), abs((tw-tw_n)/tw_n)])*100
+        Error = max([abs(Tw - Tw_n), abs(tw - tw_n)])*100
         Tw = Tw_n
         tw = tw_n
         if i == maxitr:
-            print(f'HPT CORRA HICIMOS {maxitr} ITERACIONES Y OBTUVIMOS\n    Tw:{Tw}\n   tw:{tw}')
-            return Uo
+            print(f"Warning: Iterative process did not converge. Returning fallback Uo.")
+            return 1.0  # Fallback value for Uo
     return Uo
 
+def edos(L,Ts,hot,cold):
+    global i
+    print(f'iteracion: {i}')
+    i += 1
+    [T,t] = Ts
+    streams=[hot,cold]
 
-    
+    Uo = calc_Uo(Ts, streams)
+    dt_dL = Uo*pi*Do*(T-t)/(cold.W * cold.cp(t))
+    dT_dL = Uo*pi*Do*(T-t)/( hot.W *  hot.cp(T))
+    print(f'cp_cold: {cold.cp(t)} & cp_hot: {hot.cp(T)}')
+    print(f't: {t} & T: {T}')
+
+    return[dT_dL, dt_dL]
+
+L = 10
+n = 100
+L_largo = linspace(0,L,n)
+T1_largo = zeros(n)
+t_largo = zeros(n)
+Tf_1 = 80
+i=0
+
+solution = solve_ivp(edos, [0, L], [Tf_1, cold.T0], method='BDF', t_eval=L_largo, args=(hot1, cold))
+T1_largo = solution.y[0]
+t_largo = solution.y[1]
+
+plt.plot(L_largo,t_largo, label='cold current (t)')
+plt.plot(L_largo,T1_largo, label='hot current (T)')
+plt.xlabel('exchanger length (ft)')
+plt.ylabel('temperature (°F)')
+plt.title('temperature profile in the exchanger')
+plt.grid()
+plt.legend()
+plt.show()
+
+
+
 
 
     
