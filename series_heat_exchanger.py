@@ -2,10 +2,12 @@
 This code use the laws of thermodynamics and heat transfer to simulate the temperature profile in a double tube series heat exchanger:
 assumptions:
 -Density is constant throughout the exchanger for all streams.
--The current of the inner tube is the cold one
+-The current of the inner tube is the cold one.
+-The current of the outer tube is the hot one.
+-The service fluid is the same for both currents (The hot ones).
 """
 from numpy import log, pi, linspace, zeros, vstack, column_stack, repeat, newaxis
-from scipy.integrate import solve_ivp
+from scipy.integrate import solve_ivp, quad
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
 
@@ -40,6 +42,25 @@ class Stream:
     def Pr(self,T):
         """calculates the number of Prandtl given a temperature in °F"""
         return self.cp(T)*self.miu(T)/self.kf(T)
+    def calc_deltah(self,T):
+        Tref = 120
+        h = quad(lambda T:self.cp(T),Tref,T)[0] #BTU/Lb
+        return h
+
+def T_mix(Ts,streams):
+    T = fsolve(fobj_T,(Ts[0]),args=(Ts,streams))[0]
+    return T
+
+def fobj_T (T,Ts,streams):
+    [T1,T2] = Ts
+    [hot1,hot2] = streams
+    w1 = hot1.W
+    w2 = hot2.W
+    x1 = w1/(w1+w2)
+    x2 = w2/(w1+w2)
+    h_componente = x1 * hot1.calc_deltah(T1) + x2 * hot2.calc_deltah(T2)
+    h_mezcla = x1 * hot1.calc_deltah(T) + x2 * hot2.calc_deltah(T)
+    return h_componente-h_mezcla
 
 viscosity_parameters =  [-10.2158,1792.5,0.01773,-0.000012631]
 Cp_parameters        =  [92.053,-0.039953,-0.00021103,5.3469E-07]
@@ -66,6 +87,7 @@ def calc_kw (T,parameters_pipe = parameters_pipe):
     return Kw
 
 def calc_Uo(Ts, streams):
+    '''Calculates the overall heat transfer coefficient (Uo) in BTU/(h-ft2-°F) given a temperature in °F'''
     [T,t,Q] = Ts
     [hot,cold] = streams
     
@@ -93,6 +115,7 @@ def calc_Uo(Ts, streams):
     return Uo
 
 def calc_Tw(T,t,hot,cold):
+    """Calculates the wall temperature (Tw) and the tube temperature (tw) in °F given a temperature in °F"""
     #hot stream:
     Vel = hot.Q/Area
     Miu = hot.miu(T)
@@ -133,6 +156,7 @@ def calc_Tw(T,t,hot,cold):
     return [Tw,tw]
 
 def edos(L,Ts,hot,cold):
+    """Calculates the differential equations for the heat exchanger."""
     [T,t,Q] = Ts
     streams=[hot,cold]
 
