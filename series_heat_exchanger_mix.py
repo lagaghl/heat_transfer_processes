@@ -5,6 +5,7 @@ assumptions:
 -The current of the inner tube is the cold one.
 -The current of the outer tube is the hot one.
 -The service fluid is the same for both currents (The hot ones).
+-The coefficient of heat transfer for the wall is constant throughout the exchanger.
 """
 from numpy import log, pi, linspace, zeros, vstack, column_stack
 from scipy.integrate import solve_ivp, quad
@@ -77,10 +78,10 @@ area = pi/4 * Di**2
 
 def calc_kw (T,parameters_pipe = parameters_pipe):
     """calculates the thermal conductivity (Kw) in BTU/(Lb-°F) given a temperature in °F"""
-    T = ((T-32)*5/9) + 273.15 #This pass the T from °F to K
-    [A,B,C] = parameters_pipe
-    Kw = (A + B*T + C*T**2)*0.577789316545299 #BTU/(ft-°F)
-    return Kw
+    # T = ((T-32)*5/9) + 273.15 #This pass the T from °F to K
+    # [A,B,C] = parameters_pipe
+    # Kw = (A + B*T + C*T**2)*0.577789316545299 #BTU/(ft-°F)
+    return 9.418  #BTU/(h-ft-°F)
 
 def calc_Uo(Ts, streams):
     '''Calculates the overall heat transfer coefficient (Uo) in BTU/(h-ft2-°F) given a temperature in °F'''
@@ -185,8 +186,8 @@ def fobj_intercambiador (Tf, hot, cold, second_part = False, L = L):
 """Define where the mix beggins"""
 conditions = {
     #Only one of the following options can be True:
-    "option1": True, #The mix is at the beginning of the exchanger
-    "option2": False,#The mix is at the center of the exchanger beginning with the 200°F hot fluid
+    "option1": False, #The mix is at the beginning of the exchanger
+    "option2": True,#The mix is at the center of the exchanger beginning with the 200°F hot fluid
     "option3": False,#The mix is at the center of the exchanger beginning with the 120°F hot fluid
 }
 
