@@ -6,12 +6,12 @@ assumptions:
 -The current of the outer tube is the hot one.
 -The service fluid is the same for both currents (The hot ones).
 """
-from numpy import log, pi, linspace, zeros, vstack, column_stack, repeat, newaxis
+from numpy import log, pi, linspace, zeros, vstack, column_stack
 from scipy.integrate import solve_ivp, quad
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
 
-class Stream:
+class Stream: 
     def __init__(self, Q, rho, M, T0, Viscosity, Cp, Kf):
         self.Q = Q*0.1336806/60 #ft3/s
         self.W = Q*rho/60 #Lb/s
@@ -47,11 +47,12 @@ class Stream:
         h = quad(lambda T:self.cp(T),Tref,T)[0] #BTU/Lb
         return h
 
-def T_mix(Ts,streams):
-    T = fsolve(fobj_T,(Ts[0]),args=(Ts,streams))[0]
+def T_mix(T_service,T_current,streams):
+    Ts  = [T_current, T_service]  
+    T = fsolve(fobj_Tmix,(Ts[0]),args=(Ts,streams))[0]
     return T
 
-def fobj_T (T,Ts,streams):
+def fobj_Tmix (T,Ts,streams):
     [T1,T2] = Ts
     [hot1,hot2] = streams
     w1 = hot1.W
@@ -65,12 +66,7 @@ def fobj_T (T,Ts,streams):
 viscosity_parameters =  [-10.2158,1792.5,0.01773,-0.000012631]
 Cp_parameters        =  [92.053,-0.039953,-0.00021103,5.3469E-07]
 Kf_parameters        =  [-0.2758,0.004612,-5.5391E-06]
-parameters_pipe      =  [228.2103,0.057999,-0.000086806]
-#              Q,   rho,        M,  T0, Viscosity,            Cp,            Kf
-#Nom = class ( Q,   Rho,       MW,  T0, viscosity_parameters, Cp_parameters, Kf_parameters)
-cold = Stream(40, 8.337, 18.01528,  80, viscosity_parameters, Cp_parameters, Kf_parameters)
-hot1 = Stream(30, 8.337, 18.01528, 200, viscosity_parameters, Cp_parameters, Kf_parameters)
-hot2 = Stream(30, 8.337, 18.01528, 120, viscosity_parameters, Cp_parameters, Kf_parameters)
+parameters_pipe      =  [228.2103,0.057999,-0.000086806] 
 
 Do = 2.37/12 #ft
 Di = (2.37 - 2*0.154)/12 #ft
@@ -175,9 +171,9 @@ T2_long = zeros(n)
 t1_long = zeros(n)
 t2_long = zeros(n)
 
-def fobj (Tf, hot, cold):
+def fobj_intercambiador (Tf, hot, cold, second_part = False, L = L):
     Tf = Tf[0]
-    if hasattr(cold, 'Tf1'):
+    if second_part:
         T0 = cold.Tf1
     else:
         T0 = cold.T0
@@ -194,13 +190,76 @@ conditions = {
     "option3": False,#The mix is at the center of the exchanger beginning with the 120°F hot fluid
 }
 
-if conditions["option1"]:
-    #The mix is at the beginning of the exchanger
-    hot1.T0 = T_mix([hot1.T0, hot2.T0], [hot1, hot2])
+def fobj_sistema(Tf1, streams):
+    [hot1,hot2,cold] = streams
+    cold.Tf1 = Tf1[0]
 
     #search for Tf_1:
     Tf_1 = 150 #°F
-    hot1.Tf = fsolve(fobj, (Tf_1), args=(hot1,cold), xtol=1e-6)[0]
+    hot1.Tf = fsolve(fobj_intercambiador, (Tf_1), args=(hot1,cold,True), xtol=1e-6)[0]
+    
+    solution = solve_ivp(edos, [0, L], [hot1.Tf, cold.T0,0], t_eval=L_long, args=(hot1, cold))
+    t1_long = solution.y[1]
+    cold.Tf2 = t1_long[-1]
+
+    #search for Tf_2:
+    hot2.T0 = T_mix(hot2.T_service, hot1.Tf, streams[0:2])
+    Tf_2 = 150 #°F 
+    hot2.Tf = fsolve(fobj_intercambiador, (Tf_2), args=(hot2,cold), xtol=1e-6)[0]
+    
+    solution = solve_ivp(edos, [0, L], [hot2.Tf, cold.T0,0], t_eval=L_long, args=(hot2, cold))
+    cold.Tf1 = t1_long[-1]
+
+    return Tf1 - cold.Tf1
+    
+#              Q,   rho,        M,  T0, Viscosity,            Cp,            Kf
+#Nom = class ( Q,   Rho,       MW,  T0, viscosity_parameters, Cp_parameters, Kf_parameters)
+cold = Stream(40, 8.337, 18.01528,  80, viscosity_parameters, Cp_parameters, Kf_parameters)
+
+if conditions["option1"]:
+    #              Q,   rho,        M,  T0, Viscosity,            Cp,            Kf
+    #Nom = class ( Q,   Rho,       MW,  T0, viscosity_parameters, Cp_parameters, Kf_parameters)
+    hot1 = Stream(30, 8.337, 18.01528, 200, viscosity_parameters, Cp_parameters, Kf_parameters)
+    hot2 = Stream(30, 8.337, 18.01528, 120, viscosity_parameters, Cp_parameters, Kf_parameters)
+    hot2.T_service = hot2.T0
+    hot2.W += hot1.W
+    hot1.W += hot1.W
+    hot1.T0 = T_mix(hot1.T0, hot2.T0, [hot1,hot2])
+
+    L_long = linspace(0, 2*L, 2*n)
+    #The mix is at the beginning of the exchanger
+    #search for Tf_1:
+    Tf_1 = 150 #°F
+    hot1.Tf = fsolve(fobj_intercambiador, (Tf_1), args=(hot1,cold,False,2*L), xtol=1e-6)[0]
+    solution = solve_ivp(edos, [0, 2*L], [hot1.Tf, cold.T0,0], t_eval=L_long, args=(hot1, cold))
+
+    T_long = solution.y[0]
+    t_long = solution.y[1]
+    Q_long = solution.y[2]
+    L_long = L_long[0:n]
+
+    T1_long = T_long[0:n]
+    t1_long = t_long[0:n]
+    Q1_long = Q_long[0:n]
+    cold.Tf1 = t1_long[-1]
+    
+    T2_long = T_long[n::]
+    t2_long = t_long[n::]
+    Q2_long = Q_long[n::]
+    cold.Tf2 = t2_long[-1]
+elif conditions["option2"]:
+    #              Q,   rho,        M,  T0, Viscosity,            Cp,            Kf
+    #Nom = class ( Q,   Rho,       MW,  T0, viscosity_parameters, Cp_parameters, Kf_parameters)
+    hot1 = Stream(30, 8.337, 18.01528, 200, viscosity_parameters, Cp_parameters, Kf_parameters)
+    hot2 = Stream(30, 8.337, 18.01528, 120, viscosity_parameters, Cp_parameters, Kf_parameters)
+    hot2.T_service = hot2.T0
+    hot2.W += hot1.W
+
+    #The mix is at the center of the exchanger beginning with the 200°F hot fluid
+    cold.Tf1 = fsolve(fobj_sistema, (cold.T0), args=([hot1,hot2,cold]), xtol=1e-6)[0]
+    # #search for Tf_1:
+    Tf_1 = 150 #°F
+    hot1.Tf = fsolve(fobj_intercambiador, (Tf_1), args=(hot1,cold), xtol=1e-6)[0]
     
     solution = solve_ivp(edos, [0, L], [hot1.Tf, cold.T0,0], t_eval=L_long, args=(hot1, cold))
     T1_long = solution.y[0]
@@ -208,21 +267,41 @@ if conditions["option1"]:
     Q1_long = solution.y[2]
     cold.Tf1 = t1_long[-1]
 
-    Tw_1 = zeros(n)
-    tw_1 = zeros(n)
+    #search for Tf_2:
+    Tf_2 = 150 #°F
+    hot2.T0 = T1_long[-1]
+    hot2.Tf = fsolve(fobj_intercambiador, (Tf_2), args=(hot2,cold), xtol=1e-8)[0]
+    
+    solution = solve_ivp(edos, [0, L], [hot2.Tf, cold.Tf1,Q1_long[-1]], t_eval=L_long, args=(hot2, cold))
+    T2_long = solution.y[0]
+    t2_long = solution.y[1]
+    Q2_long = solution.y[2]
+    cold.Tf2 = t2_long[-1]
+elif conditions["option3"]:
+    #              Q,   rho,        M,  T0, Viscosity,            Cp,            Kf
+    #Nom = class ( Q,   Rho,       MW,  T0, viscosity_parameters, Cp_parameters, Kf_parameters)
+    hot1 = Stream(30, 8.337, 18.01528, 120, viscosity_parameters, Cp_parameters, Kf_parameters)
+    hot2 = Stream(30, 8.337, 18.01528, 200, viscosity_parameters, Cp_parameters, Kf_parameters)
+    hot2.T_service = hot2.T0
+    hot2.W += hot1.W
 
-    for i in range(n):
-        T = T1_long[i]
-        t = t1_long[i]
-        Tw, tw = calc_Tw(T, t, hot1, cold)
-        Tw_1[i] = Tw
-        tw_1[i] = tw
-
+    #The mix is at the center of the exchanger beginning with the 120°F hot fluid
+    
+    cold.Tf1 = fsolve(fobj_sistema, (cold.T0), args=([hot1,hot2,cold]), xtol=1e-6)[0]
+    # #search for Tf_1:
+    Tf_1 = 150 #°F
+    hot1.Tf = fsolve(fobj_intercambiador, (Tf_1), args=(hot1,cold), xtol=1e-6)[0]
+    
+    solution = solve_ivp(edos, [0, L], [hot1.Tf, cold.T0,0], t_eval=L_long, args=(hot1, cold))
+    T1_long = solution.y[0]
+    t1_long = solution.y[1]
+    Q1_long = solution.y[2]
+    cold.Tf1 = t1_long[-1]
 
     #search for Tf_2:
     Tf_2 = 150 #°F
     hot2.T0 = T1_long[-1]
-    hot2.Tf = fsolve(fobj, (Tf_2), args=(hot2,cold), xtol=1e-8)[0]
+    hot2.Tf = fsolve(fobj_intercambiador, (Tf_2), args=(hot2,cold), xtol=1e-8)[0]
     
     solution = solve_ivp(edos, [0, L], [hot2.Tf, cold.Tf1,Q1_long[-1]], t_eval=L_long, args=(hot2, cold))
     T2_long = solution.y[0]
@@ -230,15 +309,18 @@ if conditions["option1"]:
     Q2_long = solution.y[2]
     cold.Tf2 = t2_long[-1]
 
-    Tw_2 = zeros(n)
-    tw_2 = zeros(n)
+Uo_1 = zeros(n)
+Uo_2 = zeros(n)
 
-    for i in range(n):
-        T = T2_long[i]
-        t = t2_long[i]
-        Tw, tw = calc_Tw(T, t, hot2, cold)
-        Tw_2[i] = Tw
-        tw_2[i] = tw
+for i in range(n):
+    T = T1_long[i]
+    t = t1_long[i]
+    Uo_1[i] = calc_Uo([T,t,0], [hot1,cold])
+    T = T2_long[i]
+    t = t2_long[i]
+    Uo_2[i] = calc_Uo([T,t,0], [hot2,cold])
+
+
 
 plt.plot(L_long,t1_long, label='cold current 1')
 plt.plot(L_long,T1_long, label='hot current 1')
@@ -259,6 +341,16 @@ plt.plot(L_long+L,Q2_long, label='heat 2')
 plt.xlabel('exchanger length (ft)')
 plt.ylabel('Q (BTU/Hr)')
 plt.title('heat transfer in the exchanger')
+plt.grid()
+plt.legend()
+plt.show()
+
+
+plt.plot(L_long,Uo_1, label='Uo1')
+plt.plot(L_long+L,Uo_2, label='Uo2')
+plt.xlabel('exchanger length (ft)')
+plt.ylabel('Uo (BTU/(h-ft2-°F))')
+plt.title('Uo in the exchanger')
 plt.grid()
 plt.legend()
 plt.show()
