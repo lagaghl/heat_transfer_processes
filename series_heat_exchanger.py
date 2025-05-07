@@ -4,7 +4,7 @@ assumptions:
 -Density is constant throughout the exchanger for all streams.
 -The current of the inner tube is the cold one.
 -The current of the outer tube is the hot one.
--The service fluid is the same for both currents (The hot ones).
+-The service fluid is the same for both currents (The hot ones). 
 """
 from numpy import log, pi, linspace, zeros, vstack, column_stack, repeat, newaxis
 from scipy.integrate import solve_ivp, quad
@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 
 class Stream:
     def __init__(self, Q, rho, M, T0, Viscosity, Cp, Kf):
-        self.Q = Q*0.1336806/60 #ft3/s
         self.W = Q*rho/60 #Lb/s
+        self.Q = Q*0.1336806/60 #ft3/s
         self.T0 = T0
         self.Viscosity = Viscosity
         self.Cp = Cp

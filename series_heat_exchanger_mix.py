@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 
 class Stream: 
     def __init__(self, Q, rho, M, T0, Viscosity, Cp, Kf):
-        self.Q = Q*0.1336806/60 #ft3/s
         self.W = Q*rho/60 #Lb/s
+        self.Q = Q*0.1336806/60 #ft3/s
         self.T0 = T0
         self.Viscosity = Viscosity
         self.Cp = Cp
@@ -186,9 +186,9 @@ def fobj_intercambiador (Tf, hot, cold, second_part = False, L = L):
 """Define where the mix beggins"""
 conditions = {
     #Only one of the following options can be True:
-    "option1": False, #The mix is at the beginning of the exchanger
-    "option2": True,#The mix is at the center of the exchanger beginning with the 200°F hot fluid
-    "option3": False,#The mix is at the center of the exchanger beginning with the 120°F hot fluid
+    "option1": False,   #The mix is at the beginning of the exchanger
+    "option2": False,    #The mix is at the center of the exchanger beginning with the 200°F hot fluid
+    "option3": True,   #The mix is at the center of the exchanger beginning with the 120°F hot fluid
 }
 
 def fobj_sistema(Tf1, streams):
