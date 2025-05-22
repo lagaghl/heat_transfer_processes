@@ -60,18 +60,139 @@ kw = 9.418  #BTU/(h-ft-°F)
 kens = 0.0008 # Btu/(h-ft-°F)
 
 '''Dimensiones del intercambiador de calor'''
-
-# Do = 2.27/12 #ft
-# Di = Do - (2*0.154)/12 #ft
-# Ds = 3.50/12 #ft
+'''Ds 1.050'''
 
 # Do = 0.920/12 #ft
 # Di = Do - (2*0.065)/12 #ft
 # Ds = 1.050/12 #ft
 
-Do = 0.824/12 #ft
-Di = Do - (2*0.113)/12 #ft
-Ds = 1.050/12 #ft
+# Do = 0.884/12 #ft
+# Di = Do - (2*0.083)/12 #ft
+# Ds = 1.050/12 #ft
+
+# Do = 0.884/12 #ft
+# Di = Do - (2*0.083)/12 #ft
+# Ds = 1.050/12 #ft
+
+# Do = 0.824/12 #ft
+# Di = Do - (2*0.113)/12 #ft
+# Ds = 1.050/12 #ft
+##L  = 7.140099999996698 ft
+##caida de Presión anulo = 7.276869190760365 ft
+##caida de Presión tubo = 6.558802679197342 ft
+
+# Do = 0.742/12 #ft
+# Di = Do - (2*0.154)/12 #ft
+# Ds = 1.050/12 #ft
+
+# Do = 0.612/12 #ft
+# Di = Do - (2*0.219)/12 #ft
+# Ds = 1.050/12 #ft
+
+'''Ds 1.315'''
+# Do = 1.185/12 #ft
+# Di = Do - (2*0.065)/12 #ft
+# Ds = 1.315/12 #ft
+
+# Do = 1.097/12 #ft
+# Di = Do - (2*0.109)/12 #ft
+# Ds = 1.315/12 #ft
+##L  = 9.986699999990064 ft
+##caida de Presión anulo = 7.297075814083712 ft
+##caida de Presión tubo = 1.5955410044895757 ft
+
+# Do = 1.049/12 #ft
+# Di = Do - (2*0.133)/12 #ft
+# Ds = 1.315/12 #ft
+##L  = 9.000099999992363 ft
+##caida de Presión anulo = 3.7418519148099563 ft
+##caida de Presión tubo = 2.409801356011151 ft
+
+# Do = 0.957/12 #ft
+# Di = Do - (2*0.179)/12 #ft
+# Ds = 1.315/12 #ft
+##L  = 7.353099999996202 ft
+##caida de Presión anulo = 1.3397504817602766 ft
+##caida de Presión tubo = 6.450887898704714 ft
+
+# Do = 0.815/12 #ft
+# Di = Do - (2*0.250)/12 #ft
+# Ds = 1.315/12 #ft
+
+'''Ds 1.660'''
+
+# Do = 1.442/12 #ft
+# Di = Do - (2*0.109)/12 #ft
+# Ds = 1.660/12 #ft
+## L  = 14.619099999979268 ft
+## caida de Presión anulo = 6.892496871151998 ft
+## caida de Presión tubo = 0.5100124343901555 ft
+
+# Do = 1.380/12 #ft
+# Di = Do - (2*0.140)/12 #ft
+# Ds = 1.660/12 #ft
+##L  = 12.85009999998339 ft
+##caida de Presión anulo = 2.955595513416675 ft
+##caida de Presión tubo = 0.725276660727566 ft
+
+# Do = 1.278/12 #ft
+# Di = Do - (2*0.191)/12 #ft
+# Ds = 1.660/12 #ft
+##L  = 10.383699999989139 ft
+##caida de Presión anulo = 0.9953255350060957 ft
+##caida de Presión tubo = 1.4695849639467085 ft
+
+# Do = 1.160/12 #ft
+# Di = Do - (2*0.250)/12 #ft
+# Ds = 1.660/12 #ft
+##L  = 8.07929999999451 ft
+##caida de Presión anulo = 0.36981500777760345 ft
+##caida de Presión tubo = 4.446797264376464 ft
+
+# Do = 0.896/12 #ft
+# Di = Do - (2*0.382)/12 #ft
+# Ds = 1.660/12 #ft
+
+'''Ds 1.9'''
+# Do = 1.770/12 #ft
+# Di = Do - (2*0.065)/12 #ft
+# Ds = 1.9/12 #ft
+
+Do = 1.682/12 #ft
+Di = Do - (2*0.109)/12 #ft
+Ds = 1.9/12 #ft
+##L  = 19.000699999969058 ft
+##caida de Presión anulo = 6.977142987448936 ft
+##caida de Presión tubo = 0.33206473702811934 ft
+
+# Do = 1.610/12 #ft
+# Di = Do - (2*0.145)/12 #ft
+# Ds = 1.9/12 #ft
+##L  = 16.301899999975348 ft
+##caida de Presión anulo = 2.6294343758684846 ft
+##caida de Presión tubo = 0.39731835863656073 ft
+
+# Do = 1.5/12 #ft
+# Di = Do - (2*0.2)/12 #ft
+# Ds = 1.9/12 #ft
+##L  = 12.979699999983088 ft
+##caida de Presión anulo = 0.8410230456484982 ft
+##caida de Presión tubo = 0.7187622628165755 ft
+
+# Do = 1.338/12 #ft
+# Di = Do - (2*0.281)/12 #ft
+# Ds = 1.9/12 #ft
+##L  = 9.269699999991735 ft
+##caida de Presión anulo = 0.23490275431191776 ft
+##caida de Presión tubo = 2.4382038552809107 ft
+
+'''Ds 3.50'''
+# Do = 2.27/12 #ft
+# Di = Do - (2*0.154)/12 #ft
+# Ds = 3.50/12 #ft
+##L  = 37.08130000010744 ft
+##caida de Presión anulo = 0.03311098254376077 ft
+##caida de Presión tubo = 0.10037814815377288 ft
 
 gc = 32.174*(3600**2) #ft-lbm/(lbf*h^2)
 
@@ -291,3 +412,7 @@ plt.show()
 print(f'T2 = {T_largo[-1]} °F') 
 print(f't1 = {t_largo[-1]} °F')
 print(f'L  = {(L_largo[-1]+dL)} ft')
+print(f'caida de Presión anulo = {P_anulo_largo[0]-P_anulo_largo[-1]} ft')
+print(f'caida de Presión tubo = {P_tubo_largo[0]-P_tubo_largo[-1]} ft')
+
+
